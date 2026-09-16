@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>XBRL Viewer</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Pretendard", "Apple SD Gothic Neo", Arial, sans-serif; background: #f6f7f9; color: #1f2933; }
+    .layout { display: flex; min-height: calc(100vh - 50px); }
+    .sidebar { width: 340px; background: #fff; border-right: 1px solid #dfe3e8; height: calc(100vh - 50px); position: sticky; top: 0; overflow-y: auto; }
+    .toc-title { padding: 16px; font-size: 15px; font-weight: 900; border-bottom: 1px solid #dfe3e8; background: #fffbed; display: flex; justify-content: space-between; }
+    .toc-section { padding: 14px 16px 8px; font-size: 13px; font-weight: 900; border-top: 1px solid #edf0f3; background: #f9fafb; }
+    .toc-item { padding: 9px 16px 9px 22px; font-size: 12px; color: #3f4854; cursor: pointer; line-height: 1.35; border-bottom: 1px solid #f1f3f5; }
+    .toc-item:hover, .toc-item.active { background: #fff7d6; color: #1f2933; font-weight: 800; }
+    .toc-meta { color: #7b8490; font-size: 11px; margin-top: 3px; }
+    .main { flex: 1; overflow: auto; }
+    .top-header { background: #fff; border-bottom: 1px solid #dfe3e8; padding: 16px 22px; position: sticky; top: 0; z-index: 10; }
+    .breadcrumb { font-size: 13px; color: #606a76; margin-bottom: 10px; }
+    .title-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .title-row h1 { margin: 0; font-size: 24px; font-weight: 900; }
+    .pill { display: inline-flex; align-items: center; padding: 7px 11px; border-radius: 999px; font-size: 12px; font-weight: 800; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; white-space: nowrap; }
+    .content { padding: 20px 24px 40px; }
+    .panel { background: #fff; border: 1px solid #dfe3e8; margin-bottom: 18px; }
+    .panel-header { padding: 13px 16px; background: #f9fafb; border-bottom: 1px solid #dfe3e8; font-size: 15px; font-weight: 900; display: flex; justify-content: space-between; }
+    .panel-body { padding: 16px; }
+    .info-grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .info-grid th { width: 160px; text-align: left; background: #f9fafb; border: 1px solid #dfe3e8; padding: 10px; }
+    .info-grid td { border: 1px solid #dfe3e8; padding: 10px; }
+    .summary-cards { display: grid; grid-template-columns: repeat(5, minmax(110px, 1fr)); gap: 12px; }
+    .summary-card { border: 1px solid #dfe3e8; background: #fff; padding: 14px; }
+    .summary-card small { display: block; color: #606a76; font-weight: 700; margin-bottom: 8px; }
+    .summary-card strong { font-size: 20px; font-weight: 900; }
+    .role-doc-title { margin: 0 0 12px; font-size: 18px; font-weight: 900; }
+    .role-doc-meta { margin-bottom: 14px; color: #606a76; font-size: 12px; line-height: 1.5; }
+    .section-heading { margin: 18px 0 8px; padding: 10px 12px; background: #f4f6f8; border: 1px solid #e5e9ef; font-weight: 900; font-size: 13px; }
+    .text-section { margin: 10px 0 18px; padding: 12px 14px; border: 1px solid #e5e9ef; background: #fff; line-height: 1.7; font-size: 13px; }
+    .text-section-title { font-weight: 900; margin-bottom: 8px; }
+    .period-text-label { font-weight: 800; margin-top: 8px; color: #374151; }
+    .table-section-title { margin: 18px 0 8px; font-size: 14px; font-weight: 900; }
+    .period-title { font-size: 13px; font-weight: 900; margin: 14px 0 8px; }
+    .table-wrap { overflow: auto; max-height: 760px; border: 1px solid #dfe3e8; margin-bottom: 22px; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; }
+    th { background: #dfe5ec; border: 1px solid #c8d0da; padding: 8px; text-align: center; font-weight: 900; position: sticky; top: 0; z-index: 2; }
+    td { border: 1px solid #d6dde6; padding: 8px; background: #fff; vertical-align: middle; }
+    tbody tr:hover td { background: #fffbed; }
+    .row-label { background: #edf1f5; font-weight: 800; min-width: 180px; }
+    .row-group-cell { min-width: 180px; vertical-align: middle; }
+    .num { text-align: right; font-family: Consolas, monospace; white-space: nowrap; }
+    .text-cell { text-align: left; line-height: 1.45; min-width: 160px; }
+    .mono { font-family: Consolas, monospace; }
+    .muted { color: #606a76; }
+    .loading { text-align: center; padding: 60px; color: #606a76; background: #fff; border: 1px solid #dfe3e8; }
+    .error-box { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; padding: 16px; border-radius: 6px; line-height: 1.6; white-space: pre-wrap; }
+.note-table-block { margin: 16px 0 26px; padding: 16px; background: #fff; border: 1px solid #dfe3e8; border-radius: 8px; }
+    .note-overview { padding: 0; margin: 0 0 16px; background: transparent; border: 0; }
+    .note-overview-heading { font-weight: 900; font-size: 13px; margin: 0 0 9px; }
+    .note-overview-text { font-size: 13px; line-height: 1.7; margin: 8px 0; }
+    .note-overview-text-title { font-weight: 900; margin-bottom: 6px; }
+    .note-overview-period { font-weight: 800; color: #374151; margin-top: 8px; }
+    .note-context-level { margin-bottom: 10px; }
+    .note-context-level-label { font-size:11px; color:#6b7280; font-weight:800; margin-bottom:4px; }
+    .note-sentence-area { padding: 0; margin: 0 0 12px; border: 0; background: transparent; }
+    .note-overview-block { padding: 0; margin: 0 0 12px; border: 0; background: transparent; }
+    .note-table-block > .table-section-title { margin-top: 0; }
+    .kox-left-corner { background: #dfe5ec; min-width: 360px; }
+    .kox-row-head { background: #dfe5ec; font-weight: 900; }
+    .row-group-cell { min-width: 180px; vertical-align: middle; }
+
+
+    .xbrl-prop-clickable { cursor: pointer; }
+    .xbrl-prop-clickable:hover { outline: 2px solid #2563eb; outline-offset: -2px; background: #eff6ff !important; }
+    .property-panel { position: fixed; top: 0; right: 0; width: 360px; height: 100vh; background: #fff; border-left: 1px solid #dfe3e8; box-shadow: -6px 0 18px rgba(0,0,0,0.12); z-index: 1000; transform: translateX(100%); transition: transform .18s ease; overflow-y: auto; }
+    .property-panel.open { transform: translateX(0); }
+    .property-header { height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid #dfe3e8; font-weight: 900; }
+    .property-close { border: none; background: transparent; font-size: 20px; cursor: pointer; color: #606a76; }
+    .property-body { padding: 14px 18px 28px; font-size: 12px; color: #374151; }
+    .property-help { color: #606a76; line-height: 1.6; padding-bottom: 12px; border-bottom: 1px solid #dfe3e8; margin-bottom: 12px; }
+    .property-row { padding: 10px 0; border-bottom: 1px solid #dfe3e8; }
+    .property-row strong { display: block; font-size: 12px; color: #606a76; margin-bottom: 6px; }
+    .property-row span { display: block; color: #1f2933; word-break: break-all; line-height: 1.45; }
+
+    .hidden { display: none !important; }
+  
+    /* 홈/뒤로가기 네비게이션 */
+    .home-nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #d6e4ff;
+      background: #ffffff;
+      color: #2563eb;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .home-nav-btn:hover {
+      background: #eff6ff;
+      border-color: #93c5fd;
+    }
+    .breadcrumb-home {
+      color: #2563eb;
+      cursor: pointer;
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .breadcrumb-home:hover {
+      text-decoration: underline;
+    }
+
+
+    .viewer-brand-bar {
+      height: 50px; background: #fff; border-bottom: 1px solid #dfe3e8;
+      display: flex; align-items: center; padding: 0 18px;
+    }
+    .viewer-brand-link {
+      display: inline-flex; align-items: center; gap: 9px; color: #1f2933;
+      font-weight: 900; text-decoration: none; cursor: pointer;
+    }
+    .viewer-brand-link img { height: 20px; max-width: 120px; object-fit: contain; }
+    .viewer-brand-mark { width: 20px; height: 20px; background: #f5c400; border-radius: 4px; display: inline-block; }
+
+</style>
+</head>
+<body>
+<header class="viewer-brand-bar">
+  <a class="viewer-brand-link" href="/" title="홈으로 이동">
+    <img src="/static/image1.png" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+    <span class="viewer-brand-mark" style="display:none;"></span>
+    <span>XBRL Viewer</span>
+  </a>
+</header>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="toc-title"><span>목차</span><span class="muted">재무제표</span></div>
+    <div id="dynamicMenu"><div class="toc-section">보고서 분석</div><div class="toc-item" onclick="showBasicTab()">기초 정보</div><div class="toc-item" onclick="showTaxonomyTab()">XBRL 표준 텍사노미 준수 검토</div></div>
+  </aside>
+  <main class="main">
+    <div class="top-header">
+      <div class="breadcrumb" id="breadcrumb"> </div>
+      <div class="title-row"><h1 id="pageTitle">XBRL Viewer</h1><span class="pill">JH</span></div>
+    </div>
+    <div class="content">
+      <section id="basic" class="panel">
+        <div class="panel-header">기초 정보</div>
+        <div class="panel-body">
+          <table class="info-grid">
+            <tr><th>회사명</th><td id="companyCell">-</td></tr>
+            <tr><th>고유번호</th><td id="corpCodeCell" class="mono">-</td></tr>
+            <tr><th>종목코드</th><td id="stockCodeCell" class="mono">-</td></tr>
+            <tr><th>보고서 유형</th><td id="typeCell">-</td></tr>
+            <tr><th>접수번호</th><td id="rceptNoCell" class="mono">-</td></tr>
+            <tr><th>보고서 코드</th><td id="reprtCodeCell" class="mono">-</td></tr>
+            <tr><th>공시일자</th><td id="reportDateCell">-</td></tr>
+          </table>
+        </div>
+      </section>
+      <div id="loading" class="loading">XBRL 데이터를 불러오는 중입니다...</div>
+      <section id="summary" class="panel hidden"><div class="panel-header">XBRL 표준 텍사노미 준수 검토</div><div class="panel-body" id="summaryBody"></div></section>
+      <section id="roleDocumentSection" class="panel hidden">
+        <div class="panel-header"><span id="roleDocumentTitle">재무제표</span><span class="muted"></span></div>
+        <div class="panel-body">
+          <div id="roleDocumentBody"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+<div id="propertyPanel" class="property-panel">
+  <div class="property-header">
+    <span>속성</span>
+    <button id="propertyCloseBtn" class="property-close">×</button>
+  </div>
+  <div id="propertyBody" class="property-body">
+    <div class="property-help">주석명 또는 요소명을 클릭해 속성을 확인해 보세요.</div>
+  </div>
+</div>
+
+<script>
+const API_BASE = window.location.origin + "/api";
+const params = new URLSearchParams(window.location.search);
+const report = { company: params.get("company") || "", type: params.get("type") || "", corp_code: params.get("corp_code") || "", stock_code: params.get("stock_code") || "", rcept_no: params.get("rcept_no") || "", reprt_code: params.get("reprt_code") || "11011", report_date: params.get("report_date") || "" };
+let xbrlData = null;
+function escapeHtml(value) { if (value === null || value === undefined) return ""; return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;"); }
+
+function goHome() {
+  // 재무제표 viewer에서 검색 홈 화면으로 돌아갑니다.
+  window.location.href = "/";
+}
+function propAttr(prop) {
+  if (!prop) return "";
+  try {
+    return ` data-xbrl-prop="${encodeURIComponent(JSON.stringify(prop))}" class="xbrl-prop-clickable"`;
+  } catch (e) {
+    return "";
+  }
+}
+function showPropertyPanel(prop) {
+  const panel = document.getElementById("propertyPanel");
+  const body = document.getElementById("propertyBody");
+  if (!panel || !body || !prop) return;
+
+  const rows = [
+    ["ID", prop.id || prop.concept || "-"],
+    ["표현 속성", prop["표현 속성"] || "기본"],
+    ["기본 한글명", prop["기본 한글명"] || "-"],
+    ["기본 영문명", prop["기본 영문명"] || prop.concept || "-"],
+    ["표시 한글명", prop["표시 한글명"] || prop["기본 한글명"] || "-"],
+    ["표시 영문명", prop["표시 영문명"] || prop.concept || "-"],
+    ["요소 구분", prop["요소 구분"] || "-"],
+    ["데이터 타입", prop["데이터 타입"] || "-"],
+    ["차변/대변", prop["차변/대변"] || "-"],
+    ["0 표시", prop["0 표시"] || "표시 안함"],
+    ["소수점 자릿수", prop["소수점 자릿수"] || "-"],
+    ["정수 자릿수", prop["정수 자릿수"] || "-"],
+    ["기간 속성", prop["기간 속성"] || "-"],
+    ["통화 및 단위정보", prop["통화 및 단위정보"] || "-"]
+  ];
+
+  body.innerHTML = `<div class="property-help">주석명 또는 요소명을 클릭해 속성을 확인해 보세요.</div>` +
+    rows.map(([k, v]) => `<div class="property-row"><strong>${escapeHtml(k)}</strong><span>${escapeHtml(v)}</span></div>`).join("");
+  panel.classList.add("open");
+}
+function closePropertyPanel() {
+  const panel = document.getElementById("propertyPanel");
+  if (panel) panel.classList.remove("open");
+}
+
+function scrollToSection(id) { const target = document.getElementById(id); if (target) target.scrollIntoView({ behavior: "smooth", block: "start" }); }
+
+function setActiveTocByAction(actionName) {
+  document.querySelectorAll(".toc-item").forEach(el => el.classList.remove("active"));
+
+  if (!actionName) return;
+
+  document.querySelectorAll(".toc-item").forEach(el => {
+    const onclickText = el.getAttribute("onclick") || "";
+    if (onclickText.includes(actionName)) {
+      el.classList.add("active");
+    }
+  });
+}
+
+function hideAllMainPanels() {
+  ["basic", "summary", "roleDocumentSection"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("hidden");
+  });
+}
+
+function showBasicTab() {
+  // 기초정보 탭은 기초정보만 표시하고, 재무제표 본문/주석 표는 숨깁니다.
+  hideAllMainPanels();
+
+  const basic = document.getElementById("basic");
+  if (basic) basic.classList.remove("hidden");
+
+  setActiveTocByAction("showBasicTab");
+  scrollToSection("basic");
+}
+
+function showTaxonomyTab() {
+  // XBRL 표준 텍사노미 준수 검토 탭은 우선 공백으로 둡니다.
+  hideAllMainPanels();
+
+  const summary = document.getElementById("summary");
+  if (summary) summary.classList.remove("hidden");
+
+  const summaryBody = document.getElementById("summaryBody");
+  if (summaryBody) summaryBody.innerHTML = "";
+
+  setActiveTocByAction("showTaxonomyTab");
+  scrollToSection("summary");
+}
+
+function showRoleTab(roleId) {
+  // 재무제표 본문/주석 role 탭은 해당 표 데이터만 표시합니다.
+  hideAllMainPanels();
+
+  const roleSection = document.getElementById("roleDocumentSection");
+  if (roleSection) roleSection.classList.remove("hidden");
+
+  setActiveTocByAction(`renderRoleDocument('${roleId}')`);
+}
+
+function setBasicInfo() { document.title = `${report.company} - XBRL Viewer`; document.getElementById("breadcrumb").textContent = ` / ${report.company}`; document.getElementById("pageTitle").textContent = `${report.company} ${report.type}`; document.getElementById("companyCell").textContent = report.company || "-"; document.getElementById("corpCodeCell").textContent = report.corp_code || "-"; document.getElementById("stockCodeCell").textContent = report.stock_code || "-"; document.getElementById("typeCell").textContent = report.type || "-"; document.getElementById("rceptNoCell").textContent = report.rcept_no || "-"; document.getElementById("reprtCodeCell").textContent = report.reprt_code || "-"; document.getElementById("reportDateCell").textContent = report.report_date || "-"; }
+async function loadXbrl() { const loading = document.getElementById("loading"); try { if (!report.rcept_no) throw new Error("rcept_no가 없습니다."); const url = `${API_BASE}/xbrl?rcept_no=${encodeURIComponent(report.rcept_no)}&reprt_code=${encodeURIComponent(report.reprt_code)}`; const res = await fetch(url); const data = await res.json(); if (!res.ok) { const preview = data.response_preview ? `\n\nDART 응답 미리보기:\n${data.response_preview}` : ""; throw new Error((data.error || `HTTP ${res.status}`) + preview); } xbrlData = data; loading.classList.add("hidden"); renderSummary(data); renderMenu(data); showBasicTab(); } catch (e) { console.error(e); loading.innerHTML = `<div class="error-box"><strong>XBRL 데이터 로드 오류</strong><br>${escapeHtml(e.message)}</div>`; } }
+function getFirstRoleId(data) { const menus = data.menus || []; for (const group of menus) { for (const item of group.items || []) { if (item.role_id) return item.role_id; } } const docs = data.role_documents || {}; return Object.keys(docs)[0] || null; }
+function renderSummary(data) {
+  // XBRL 표준 텍사노미 준수 검토 탭은 우선 공백으로 둡니다.
+  document.getElementById("summaryBody").innerHTML = "";
+}
+function renderMenu(data) {
+  const menu = document.getElementById("dynamicMenu");
+
+  let html = `
+    <div class="toc-section">보고서 분석</div>
+    <div class="toc-item" onclick="showBasicTab()">기초 정보</div>
+    <div class="toc-item" onclick="showTaxonomyTab()">XBRL 표준 텍사노미 준수 검토</div>
+  `;
+
+  (data.menus || []).forEach(group => {
+    html += `<div class="toc-section">${escapeHtml(group.group)}</div>`;
+
+    if (!group.items || group.items.length === 0) {
+      html += `<div class="toc-item muted">항목 없음</div>`;
+      return;
+    }
+
+    group.items.forEach(item => {
+      html += `
+        <div class="toc-item" onclick="renderRoleDocument('${escapeHtml(item.role_id)}')">
+          ${escapeHtml(item.title)}
+        </div>
+      `;
+    });
+  });
+
+  menu.innerHTML = html;
+}
+function renderRoleDocument(roleId) {
+  if (!xbrlData || !xbrlData.role_documents) return;
+  const doc=xbrlData.role_documents[roleId]; if (!doc) return;
+  showRoleTab(roleId);
+  document.getElementById("roleDocumentSection").classList.remove("hidden");
+  document.getElementById("roleDocumentTitle").textContent=doc.display_title || roleId;
+  let html=`<div class="role-doc-title">${escapeHtml(doc.display_title || roleId)}</div><div class="role-doc-meta">${escapeHtml(doc.group || "")} / ${escapeHtml(doc.scope || "")}</div>`;
+  (doc.sections || []).forEach(section=>{
+    if(section.type==="body_statement") html+=renderBodyStatement(section);
+    else if(section.type==="note_table") html+=renderNoteTable(section);
+  });
+  document.getElementById("roleDocumentBody").innerHTML=html;
+  scrollToSection("roleDocumentSection");
+}
+function renderHeading(section) { return section.title ? `<div class="section-heading">${escapeHtml(section.title)}</div>` : ""; }
+function renderTextSection(section) { let html = `<div class="text-section"><div class="text-section-title">${escapeHtml(section.title || "설명")}</div>`; (section.values || []).forEach(v => { html += `<div class="period-text-label">${escapeHtml(v.period_label || v.period_key)}</div><div>${escapeHtml(v.value || "-")}</div>`; }); return html + `</div>`; }
+function renderBodyStatement(section) { let html = `<div class="table-section-title">${escapeHtml(section.title || "재무제표")}</div><div class="table-wrap"><table><thead><tr><th style="min-width:280px;"> </th>`; (section.columns || []).forEach(col => { html += `<th style="min-width:160px;">${escapeHtml(col.label)}</th>`; }); html += `</tr></thead><tbody>`; (section.rows || []).forEach(row => { const padding = Math.min((row.depth || 0) * 14, 70); html += `<tr><td class="row-label" style="padding-left:${padding + 8}px;"${propAttr(row.properties)}>${escapeHtml(row.label)}</td>`; (row.values || []).forEach(cell => { html += `<td class="${cell.is_numeric ? "num" : "text-cell"}">${escapeHtml(cell.value || "-")}</td>`; }); html += `</tr>`; }); return html + `</tbody></table></div>`; }
+function renderNoteOverviewItem(item) {
+  if (!item) return "";
+
+  if (item.type === "heading") {
+    return item.title ? `<div class="note-overview-heading">${escapeHtml(item.title)}</div>` : "";
+  }
+
+  if (item.type === "text") {
+    let html = `<div class="note-overview-text"><div class="note-overview-text-title">${escapeHtml(item.title || "설명")}</div>`;
+    (item.values || []).forEach(v => {
+      html += `<div class="note-overview-period">${escapeHtml(v.period_label || v.period_key || "")}</div><div>${escapeHtml(v.value || "-")}</div>`;
+    });
+    html += `</div>`;
+    return html;
+  }
+
+  return "";
+}
+
+function renderTableContextBlock(block) {
+  if (!block) return "";
+
+  let html = `<div class="${block.type === "sentence_area" ? "note-sentence-area" : "note-overview-block"}">`;
+
+  const blockTitle = block.title || (block.type === "sentence_area" ? "문장영역" : "개요");
+  html += `<div class="note-overview-heading"${propAttr(block.properties)}>${escapeHtml(blockTitle)}</div>`;
+
+  const items = block.items || [];
+
+  if (items.length) {
+    items.forEach(item => {
+      if (item.title && item.concept !== block.concept) {
+        html += `<div class="note-overview-text-title"${propAttr(item.properties)}>${escapeHtml(item.title)}</div>`;
+      }
+
+      (item.values || []).forEach(value => {
+        if (block.type !== "sentence_area") {
+          html += `<div class="note-overview-period">${escapeHtml(value.period_label || value.period_key || "")}</div>`;
+        }
+        html += `<div class="note-overview-text">${escapeHtml(value.value || "-")}</div>`;
+      });
+    });
+  } else {
+    (block.values || []).forEach(value => {
+      if (block.type !== "sentence_area") {
+        html += `<div class="note-overview-period">${escapeHtml(value.period_label || value.period_key || "")}</div>`;
+      }
+      html += `<div class="note-overview-text">${escapeHtml(value.value || "-")}</div>`;
+    });
+  }
+
+  return html + `</div>`;
+}
+
+function renderNoteTable(section) {
+  let html = `<div class="note-table-block">`;
+  const contextBlocks = section.context_blocks || [];
+  if (contextBlocks.length) {
+    html += `<div class="note-overview">`;
+    contextBlocks.forEach(block => { html += renderTableContextBlock(block); });
+    html += `</div>`;
+  }
+  html += `<div class="table-section-title"${propAttr(section.properties)}>${escapeHtml(section.title || "표")}</div>`;
+
+  (section.period_blocks || []).forEach(block => {
+    const columns = block.columns || [];
+    const headerRows = block.header_rows || [];
+    const rows = block.rows || [];
+    const hasRowGroup = rows.some(r => r.row_group);
+    const leftColCount = hasRowGroup ? 2 : 1;
+
+    html += `<div class="period-title">(기간: ${escapeHtml(block.period_label || block.period_key)})</div><div class="table-wrap"><table><thead>`;
+
+    if (headerRows.length) {
+      headerRows.forEach((hrow, idx) => {
+        html += `<tr>`;
+
+        // KOX식 구조: 축 header 왼쪽은 빈 corner로 두고,
+        // '항목'이라는 큰 header는 만들지 않는다. 실제 [항목]은 body row의 왼쪽 병합 셀에 표시한다.
+        if (idx === 0) {
+          html += `<th class="kox-left-corner" colspan="${leftColCount}" rowspan="${headerRows.length}"></th>`;
+        }
+
+        hrow.forEach(cell => {
+          html += `<th colspan="${cell.colspan || 1}" rowspan="${cell.rowspan || 1}"${propAttr(cell.properties)}>${escapeHtml(cell.label || "-")}</th>`;
+        });
+
+        html += `</tr>`;
+      });
+    } else {
+      html += `<tr>`;
+      html += `<th class="kox-left-corner" colspan="${leftColCount}"></th>`;
+      columns.forEach(col => {
+        html += `<th style="min-width:150px;"${propAttr(col.properties)}>${escapeHtml(col.label || "-")}</th>`;
+      });
+      html += `</tr>`;
+    }
+
+    html += `</thead><tbody>`;
+
+    // 같은 row_group은 KOX처럼 왼쪽 첫 컬럼에서 rowspan으로 묶는다.
+    const groupSpan = {};
+    rows.forEach(row => {
+      const key = row.row_group || "";
+      if (key) groupSpan[key] = (groupSpan[key] || 0) + 1;
+    });
+    const groupRendered = {};
+
+    rows.forEach(row => {
+      const padding = Math.min((row.depth || 0) * 14, 70);
+      const group = row.row_group || "";
+      html += `<tr>`;
+
+      if (hasRowGroup) {
+        if (group && !groupRendered[group]) {
+          groupRendered[group] = true;
+          html += `<td class="row-label row-group-cell" rowspan="${groupSpan[group] || 1}"${propAttr(row.row_group_properties)}>${escapeHtml(group)}</td>`;
+        } else if (!group) {
+          html += `<td class="row-label row-group-cell"></td>`;
+        }
+        html += `<td class="row-label" style="padding-left:${padding + 8}px;"${propAttr(row.properties)}>${escapeHtml(row.label)}</td>`;
+      } else {
+        html += `<td class="row-label" style="padding-left:${padding + 8}px;"${propAttr(row.properties)}>${escapeHtml(row.label)}</td>`;
+      }
+
+      (row.values || []).forEach(cell => {
+        html += `<td class="${cell.is_numeric ? "num" : "text-cell"}">${escapeHtml(cell.value || "-")}</td>`;
+      });
+
+      html += `</tr>`;
+    });
+
+    html += `</tbody></table></div>`;
+  });
+
+  html += `</div>`;
+  return html;
+}
+
+document.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-xbrl-prop]");
+  if (!target) return;
+  try {
+    const prop = JSON.parse(decodeURIComponent(target.getAttribute("data-xbrl-prop")));
+    showPropertyPanel(prop);
+  } catch (e) {
+    console.warn("속성 정보를 읽지 못했습니다.", e);
+  }
+});
+
+const propertyCloseBtn = document.getElementById("propertyCloseBtn");
+if (propertyCloseBtn) {
+  propertyCloseBtn.addEventListener("click", closePropertyPanel);
+}
+
+setBasicInfo(); loadXbrl();
+</script>
+</body>
+</html>

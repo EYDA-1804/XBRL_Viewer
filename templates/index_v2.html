@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XBRL Viewer</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #f5c400;
+      --primary-soft: #fff7d6;
+      --primary-light: #fffbed;
+      --text: #1f2933;
+      --text-soft: #606a76;
+      --bg: #f6f7f9;
+      --white: #ffffff;
+      --border: #dfe3e8;
+      --border-soft: #edf0f3;
+      --header: #2b3036;
+      --success: #168a4a;
+      --warning: #d58a00;
+      --danger: #c0392b;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Apple SD Gothic Neo", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    button, input, select {
+      font-family: inherit;
+    }
+
+    .app {
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    .top-nav {
+      height: 50px;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      gap: 28px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 150px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .brand img {
+      height: 20px;
+    }
+
+    .brand-fallback {
+      width: 20px;
+      height: 20px;
+      background: var(--primary);
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .layout {
+      display: flex;
+      min-height: calc(100vh - 50px);
+    }
+
+    .sidebar {
+      width: 360px;
+      background: var(--white);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .sidebar-title {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--primary-light);
+    }
+
+    .sidebar-title h2 {
+      font-size: 16px;
+      margin: 0;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .filter-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .section-header {
+      background: var(--primary-soft);
+      color: var(--text);
+      min-height: 36px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 800;
+      font-size: 13px;
+      border: 1px solid #f0dc8a;
+      border-radius: 6px;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    .section-header:hover {
+      background: #fff1b8;
+    }
+
+    .filter-label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-soft);
+      margin-bottom: 9px;
+      font-weight: 700;
+    }
+
+    select {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--border);
+      background: #fbfbfb;
+      padding: 0 12px;
+      font-size: 14px;
+      outline: none;
+      border-radius: 4px;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 29px;
+      font-size: 14px;
+    }
+
+    .sidebar-actions {
+      margin-top: auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: 66px;
+      border-top: 1px solid var(--border);
+    }
+
+    .reset-btn, .search-btn {
+      border: none;
+      font-weight: 800;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .reset-btn {
+      background: var(--white);
+      color: var(--text-soft);
+      border-right: 1px solid var(--border);
+    }
+
+    .search-btn {
+      background: var(--primary);
+      color: var(--text);
+    }
+
+    .reset-btn:hover {
+      background: #f9fafb;
+    }
+
+    .search-btn:hover {
+      background: #e7b900;
+    }
+
+    .main-content {
+      flex: 1;
+      overflow: auto;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-bar {
+      background: #2b3036;
+      color: white;
+      padding: 20px;
+      border-bottom: 3px solid var(--primary);
+    }
+
+    .header-bar h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .header-bar p {
+      margin: 0;
+      font-size: 14px;
+      color: #eef1f4;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--primary);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: 800;
+      margin-right: 8px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 120px 20px;
+      color: var(--text-soft);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 500px;
+      flex: 1;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+      opacity: 0.3;
+    }
+
+    .empty-state h2 {
+      margin: 0 0 16px;
+      font-size: 20px;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .empty-state p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.8;
+      color: var(--text-soft);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .result-area {
+      padding: 20px;
+      background: var(--white);
+      margin: 0;
+      border: none;
+      border-radius: 0;
+      overflow: visible;
+      width: 100%;
+      flex: 1;
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .result-header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .result-header span {
+      font-size: 16px;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .report-list {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .xbrl-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .xbrl-table th {
+      background: #f9fafb;
+      padding: 14px;
+      text-align: left;
+      font-weight: 800;
+      border-bottom: 2px solid var(--border);
+      color: var(--text);
+    }
+
+    .xbrl-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .xbrl-table tbody tr:hover {
+      background: var(--primary-light);
+    }
+
+    .view-btn {
+      background: #f5c400;
+      color: #1f2933;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .view-btn:hover {
+      background: #e7b900;
+    }
+
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0;
+      z-index: 1000;
+      max-width: 500px;
+      min-width: 400px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .modal-close {
+      border: none;
+      background: transparent;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--text-soft);
+    }
+
+    .modal-search {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .modal-search input {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--border);
+      padding: 0 12px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .company-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .company-item {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border-soft);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .company-item:hover {
+      background: var(--primary-light);
+    }
+
+    .company-item.selected {
+      background: var(--primary-soft);
+      font-weight: 700;
+    }
+
+    .company-info {
+      flex: 1;
+    }
+
+    .company-info strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .company-info small {
+      display: block;
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+
+    .modal-footer {
+      padding: 12px 20px;
+      text-align: right;
+      border-top: 1px solid var(--border-soft);
+    }
+
+    .modal-confirm-btn {
+      background: var(--primary);
+      color: var(--text);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .modal-confirm-btn:hover {
+      background: #e7b900;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 999;
+    }
+
+    .message-box {
+      padding: 20px;
+      text-align: center;
+      color: #999;
+    }
+
+    .error-box {
+      padding: 20px;
+      color: var(--danger);
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+  <header class="top-nav">
+    <div class="brand">
+      <img src="/static/image1.png" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend','<span class=&quot;brand-fallback&quot;></span>');">
+      <span>XBRL Viewer</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-title">
+        <h2>검색 조건</h2>
+      </div>
+
+      <div class="filter-section">
+        <div class="section-header" id="companySelectBtn">
+          <span id="selectedCompanyDisplay">회사 선택</span>
+          <span>+</span>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <label class="filter-label">사업연도</label>
+        <select id="yearSelect">
+          <option value="2026">2026년</option>
+          <option value="2025" selected>2025년</option>
+          <option value="2024">2024년</option>
+          <option value="2023">2023년</option>
+        </select>
+      </div>
+
+      <div class="filter-section">
+        <label class="filter-label">보고서 종류</label>
+
+        <div class="check-row">
+          <input type="checkbox" id="reportAR" value="AR" checked />
+          <label for="reportAR">사업보고서(AR)</label>
+        </div>
+
+        <div class="check-row">
+          <input type="checkbox" id="report1Q" value="1Q" />
+          <label for="report1Q">1분기보고서(1Q)</label>
+        </div>
+
+        <div class="check-row">
+          <input type="checkbox" id="reportSAR" value="SAR" />
+          <label for="reportSAR">반기보고서(SAR)</label>
+        </div>
+
+        <div class="check-row">
+          <input type="checkbox" id="report3Q" value="3Q" />
+          <label for="report3Q">3분기보고서(3Q)</label>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <label class="filter-label">결산월</label>
+        <select id="monthSelect">
+          <option value="">전체</option>
+          <option value="01">1월</option>
+          <option value="02">2월</option>
+          <option value="03">3월</option>
+          <option value="04">4월</option>
+          <option value="05">5월</option>
+          <option value="06">6월</option>
+          <option value="07">7월</option>
+          <option value="08">8월</option>
+          <option value="09">9월</option>
+          <option value="10">10월</option>
+          <option value="11">11월</option>
+          <option value="12">12월</option>
+        </select>
+      </div>
+
+      <div class="sidebar-actions">
+        <button class="reset-btn" id="resetBtn">초기화</button>
+        <button class="search-btn" id="searchBtn">검색</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="header-bar">
+        <h1>XBRL Viewer</h1>
+        <p>
+          <span class="badge">XBRL Viewer</span>
+          는 EY한영 DA팀이 개발한 Website로 보고서별 상세 분석을 제공합니다.
+        </p>
+      </div>
+
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">▤</div>
+        <h2>원하시는 보고서를 찾아보세요</h2>
+        <p>좌측 패널에서 회사를 선택하고<br />검색 버튼을 클릭해 주세요.</p>
+      </div>
+
+      <div id="resultArea" class="result-area hidden">
+        <div class="result-header">
+          <h2>검색 결과</h2>
+          <span id="resultCount">0건</span>
+        </div>
+
+        <div class="report-list" id="reportList"></div>
+      </div>
+    </main>
+  </div>
+
+  <div id="companyModal" class="modal hidden">
+    <div class="modal-header">
+      <h2>회사 선택</h2>
+      <button id="modalCloseBtn" class="modal-close">✕</button>
+    </div>
+
+    <div class="modal-search">
+      <input id="modalCompanyInput" type="text" placeholder="회사명 입력 (예: 삼성전자)" />
+    </div>
+
+    <div id="companyList" class="company-list"></div>
+
+    <div class="modal-footer">
+      <button id="modalConfirmBtn" class="modal-confirm-btn">확인</button>
+    </div>
+  </div>
+
+  <div id="modalOverlay" class="modal-overlay hidden"></div>
+</div>
+
+<script>
+const API_BASE = window.location.origin + "/api";
+
+const companySelectBtn = document.getElementById("companySelectBtn");
+const companyModal = document.getElementById("companyModal");
+const modalCloseBtn = document.getElementById("modalCloseBtn");
+const modalOverlay = document.getElementById("modalOverlay");
+const modalCompanyInput = document.getElementById("modalCompanyInput");
+const companyList = document.getElementById("companyList");
+const modalConfirmBtn = document.getElementById("modalConfirmBtn");
+const selectedCompanyDisplay = document.getElementById("selectedCompanyDisplay");
+
+const searchBtn = document.getElementById("searchBtn");
+const resetBtn = document.getElementById("resetBtn");
+const yearSelect = document.getElementById("yearSelect");
+const monthSelect = document.getElementById("monthSelect");
+
+const emptyState = document.getElementById("emptyState");
+const resultArea = document.getElementById("resultArea");
+const resultCount = document.getElementById("resultCount");
+const reportList = document.getElementById("reportList");
+
+let selectedCompany = null;
+window.reportStore = {};
+
+function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function openCompanyModal() {
+  companyModal.classList.remove("hidden");
+  modalOverlay.classList.remove("hidden");
+
+  if (!modalCompanyInput.value.trim()) {
+    companyList.innerHTML = '<div class="message-box">회사명을 2글자 이상 입력하세요.</div>';
+  }
+
+  setTimeout(() => {
+    modalCompanyInput.focus();
+  }, 50);
+}
+
+function closeCompanyModal() {
+  companyModal.classList.add("hidden");
+  modalOverlay.classList.add("hidden");
+}
+
+let companySearchTimer = null;
+let companySearchAbortController = null;
+let latestCompanyKeyword = "";
+
+function handleCompanyFilter(e) {
+  const keyword = e.target.value.trim();
+  latestCompanyKeyword = keyword;
+
+  if (companySearchTimer) {
+    clearTimeout(companySearchTimer);
+  }
+
+  if (companySearchAbortController) {
+    companySearchAbortController.abort();
+    companySearchAbortController = null;
+  }
+
+  selectedCompany = null;
+
+  if (!keyword || keyword.length < 2) {
+    companyList.innerHTML = '<div class="message-box">2글자 이상 입력하세요.</div>';
+    return;
+  }
+
+  companyList.innerHTML = '<div class="message-box">입력 대기 중...</div>';
+
+  companySearchTimer = setTimeout(() => {
+    searchCompaniesDebounced(keyword);
+  }, 350);
+}
+
+async function searchCompaniesDebounced(keyword) {
+  try {
+    companySearchAbortController = new AbortController();
+
+    companyList.innerHTML = '<div class="message-box">검색 중...</div>';
+
+    const res = await fetch(
+      `${API_BASE}/companies?q=${encodeURIComponent(keyword)}`,
+      { signal: companySearchAbortController.signal }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+
+    // 오래된 검색 응답이 늦게 돌아온 경우 화면에 반영하지 않는다.
+    if (keyword !== latestCompanyKeyword) {
+      return;
+    }
+
+    displayCompanies(data);
+  } catch (e) {
+    if (e.name === "AbortError") {
+      return;
+    }
+
+    console.error(e);
+    companyList.innerHTML = `<div class="error-box">검색 오류: ${escapeHtml(e.message)}</div>`;
+  } finally {
+    companySearchAbortController = null;
+  }
+}
+
+function displayCompanies(companies) {
+  companyList.innerHTML = "";
+
+  if (!companies || companies.length === 0) {
+    companyList.innerHTML = '<div class="message-box">검색 결과 없음</div>';
+    return;
+  }
+
+  companies.forEach(company => {
+    const item = document.createElement("div");
+    item.className = "company-item";
+
+    item.innerHTML = `
+      <div class="company-info">
+        <strong>${escapeHtml(company.name)}</strong>
+        <small>고유 번호: ${escapeHtml(company.corp_code)}</small>
+      </div>
+    `;
+
+    item.addEventListener("click", () => {
+      document.querySelectorAll(".company-item").forEach(el => el.classList.remove("selected"));
+      item.classList.add("selected");
+
+      selectedCompany = {
+        name: company.name,
+        code: company.code,
+        corp_code: company.corp_code
+      };
+    });
+
+    companyList.appendChild(item);
+  });
+}
+
+function getSelectedReportTypes() {
+  const types = [];
+
+  if (document.getElementById("reportAR").checked) types.push("AR");
+  if (document.getElementById("report1Q").checked) types.push("1Q");
+  if (document.getElementById("reportSAR").checked) types.push("SAR");
+  if (document.getElementById("report3Q").checked) types.push("3Q");
+
+  return types;
+}
+
+
+async function handleSearch() {
+  if (!selectedCompany) {
+    alert("회사를 선택해주세요.");
+    return;
+  }
+
+  const reportTypes = getSelectedReportTypes();
+
+  if (reportTypes.length === 0) {
+    alert("보고서 종류를 하나 이상 선택해주세요.");
+    return;
+  }
+
+  try {
+    emptyState.classList.add("hidden");
+    resultArea.classList.remove("hidden");
+    reportList.innerHTML = '<div class="message-box">검색 중...</div>';
+    resultCount.textContent = "검색 중";
+
+    const res = await fetch(`${API_BASE}/search`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        corp_code: selectedCompany.corp_code,
+        year: parseInt(yearSelect.value, 10),
+        report_types: reportTypes,
+        fiscal_month: monthSelect.value,
+        month: monthSelect.value
+      })
+    });
+
+    const reports = await res.json();
+
+    if (!res.ok) {
+      throw new Error(reports.error || `HTTP ${res.status}`);
+    }
+
+    renderReports(reports);
+
+  } catch (e) {
+    console.error("검색 오류:", e);
+    resultCount.textContent = "오류";
+    reportList.innerHTML = `<div class="error-box">검색 오류: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderReports(reports) {
+  emptyState.classList.add("hidden");
+  resultArea.classList.remove("hidden");
+
+  resultCount.textContent = `${reports.length}건`;
+  reportList.innerHTML = "";
+  window.reportStore = {};
+
+  if (!reports || reports.length === 0) {
+    reportList.innerHTML = '<div class="message-box">검색 결과 없음</div>';
+    return;
+  }
+
+  let html = `
+    <table class="xbrl-table">
+      <thead>
+        <tr>
+          <th style="width: 23%;">회사명</th>
+          <th style="width: 30%;">보고서 유형</th>
+          <th style="width: 15%;">공시일자</th>
+          <th style="width: 17%;">접수번호</th>
+          <th style="width: 15%;">작업</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  reports.forEach((report, index) => {
+    window.reportStore[index] = report;
+
+    html += `
+      <tr>
+        <td>${escapeHtml(report.company)}</td>
+        <td>${escapeHtml(report.type)}</td>
+        <td>${escapeHtml(report.report_date || report.rcept_dt || "-")}</td>
+        <td style="font-family: monospace; font-size: 12px;">${escapeHtml(report.rcept_no)}</td>
+        <td>
+          <button class="view-btn" onclick="openViewerInNewTab(${index})">
+            XBRL 보기
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += `
+      </tbody>
+    </table>
+  `;
+
+  reportList.innerHTML = html;
+}
+
+function openViewerInNewTab(index) {
+  const report = window.reportStore[index];
+
+  if (!report) {
+    alert("보고서 정보를 찾을 수 없습니다.");
+    return;
+  }
+
+  const params = new URLSearchParams({
+    company: report.company || "",
+    type: report.type || "",
+    corp_code: report.corp_code || selectedCompany?.corp_code || "",
+    stock_code: report.stock_code || report.code || selectedCompany?.code || "",
+    rcept_no: report.rcept_no || "",
+    reprt_code: report.reprt_code || "11011",
+    report_date: report.report_date || report.rcept_dt || ""
+  });
+
+  window.open(`/viewer?${params.toString()}`, "_blank");
+}
+
+companySelectBtn.addEventListener("click", openCompanyModal);
+modalCloseBtn.addEventListener("click", closeCompanyModal);
+modalOverlay.addEventListener("click", closeCompanyModal);
+modalCompanyInput.addEventListener("input", handleCompanyFilter);
+
+modalConfirmBtn.addEventListener("click", () => {
+  if (selectedCompany) {
+    closeCompanyModal();
+    selectedCompanyDisplay.textContent = `${selectedCompany.name} (${selectedCompany.code || "-"})`;
+  } else {
+    alert("회사를 선택해주세요.");
+  }
+});
+
+searchBtn.addEventListener("click", handleSearch);
+
+resetBtn.addEventListener("click", () => {
+  location.reload();
+});
+</script>
+</body>
+</html>
